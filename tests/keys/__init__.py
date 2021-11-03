@@ -1,72 +1,58 @@
 import json
 import os
 
+from jwt.algorithms import has_crypto
 from jwt.utils import base64url_decode
 
-from tests.utils import ensure_bytes, int_from_bytes
+try:
+    from cryptography.hazmat.primitives.asymmetric import ec
+except ModuleNotFoundError:
+    pass
+
+if has_crypto:
+    from jwt.algorithms import RSAAlgorithm
 
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
 def decode_value(val):
-    decoded = base64url_decode(ensure_bytes(val))
-    return int_from_bytes(decoded, 'big')
+    decoded = base64url_decode(val)
+    return int.from_bytes(decoded, byteorder="big")
 
 
 def load_hmac_key():
-    with open(os.path.join(BASE_PATH, 'jwk_hmac.json'), 'r') as infile:
+    with open(os.path.join(BASE_PATH, "jwk_hmac.json")) as infile:
         keyobj = json.load(infile)
 
-    return base64url_decode(ensure_bytes(keyobj['k']))
+    return base64url_decode(keyobj["k"])
 
-try:
-    from cryptography.hazmat.primitives.asymmetric import rsa
-    from cryptography.hazmat.primitives.asymmetric import ec
-    from cryptography.hazmat.backends import default_backend
 
-    has_crypto = True
-except ImportError:
-    has_crypto = False
+def load_rsa_key():
+    with open(os.path.join(BASE_PATH, "jwk_rsa_key.json")) as infile:
+        return RSAAlgorithm.from_jwk(infile.read())
 
-if has_crypto:
-    def load_rsa_key():
-        with open(os.path.join(BASE_PATH, 'jwk_rsa_key.json'), 'r') as infile:
-            keyobj = json.load(infile)
 
-        return rsa.RSAPrivateNumbers(
-            p=decode_value(keyobj['p']),
-            q=decode_value(keyobj['q']),
-            d=decode_value(keyobj['d']),
-            dmp1=decode_value(keyobj['dp']),
-            dmq1=decode_value(keyobj['dq']),
-            iqmp=decode_value(keyobj['qi']),
-            public_numbers=load_rsa_pub_key().public_numbers()
-        ).private_key(default_backend())
+def load_rsa_pub_key():
+    with open(os.path.join(BASE_PATH, "jwk_rsa_pub.json")) as infile:
+        return RSAAlgorithm.from_jwk(infile.read())
 
-    def load_rsa_pub_key():
-        with open(os.path.join(BASE_PATH, 'jwk_rsa_pub.json'), 'r') as infile:
-            keyobj = json.load(infile)
 
-        return rsa.RSAPublicNumbers(
-            n=decode_value(keyobj['n']),
-            e=decode_value(keyobj['e'])
-        ).public_key(default_backend())
+def load_ec_key():
+    with open(os.path.join(BASE_PATH, "jwk_ec_key.json")) as infile:
+        keyobj = json.load(infile)
 
-    def load_ec_key():
-        with open(os.path.join(BASE_PATH, 'jwk_ec_key.json'), 'r') as infile:
-            keyobj = json.load(infile)
+    return ec.EllipticCurvePrivateNumbers(
+        private_value=decode_value(keyobj["d"]),
+        public_numbers=load_ec_pub_key_p_521().public_numbers(),
+    )
 
-        return ec.EllipticCurvePrivateNumbers(
-            private_value=decode_value(keyobj['d']),
-            public_numbers=load_ec_pub_key().public_numbers()
-        )
 
-    def load_ec_pub_key():
-        with open(os.path.join(BASE_PATH, 'jwk_ec_pub.json'), 'r') as infile:
-            keyobj = json.load(infile)
+def load_ec_pub_key_p_521():
+    with open(os.path.join(BASE_PATH, "jwk_ec_pub_P-521.json")) as infile:
+        keyobj = json.load(infile)
 
-        return ec.EllipticCurvePublicNumbers(
-            x=decode_value(keyobj['x']),
-            y=decode_value(keyobj['y']),
-            curve=ec.SECP521R1()
-        ).public_key(default_backend())
+    return ec.EllipticCurvePublicNumbers(
+        x=decode_value(keyobj["x"]),
+        y=decode_value(keyobj["y"]),
+        curve=ec.SECP521R1(),
+    ).public_key()

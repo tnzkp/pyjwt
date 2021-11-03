@@ -10,14 +10,10 @@ def test_encode_decode():
     tests. This is primarily a sanity check to make sure we don't break the
     public global functions.
     """
-    payload = {
-        'iss': 'jeff',
-        'exp': utc_timestamp() + 15,
-        'claim': 'insanity'
-    }
+    payload = {"iss": "jeff", "exp": utc_timestamp() + 15, "claim": "insanity"}
 
-    secret = 'secret'
-    jwt_message = jwt.encode(payload, secret)
-    decoded_payload = jwt.decode(jwt_message, secret)
+    secret = "secret"
+    jwt_message = jwt.encode(payload, secret, algorithm="HS256")
+    decoded_payload = jwt.decode(jwt_message, secret, algorithms=["HS256"])
 
     assert decoded_payload == payload
